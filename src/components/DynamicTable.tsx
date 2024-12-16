@@ -1,21 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DataTable, DataTablePageParams } from 'primereact/datatable';
+import { DataTable, DataTableStateEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import axios from 'axios';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import { InputText } from 'primereact/inputtext';
-
-interface Artwork {
-	id: number;
-	title: string;
-	place_of_origin: string;
-	artist_display: string;
-	inscriptions: string;
-	date_start: number;
-	date_end: number;
-}
+import { Artwork } from '../types';
 
 const API_URL = 'https://api.artic.edu/api/v1/artworks';
 
@@ -23,10 +14,10 @@ const DynamicTable: React.FC = () => {
 	const [artworks, setArtworks] = useState<Artwork[]>([]);
 	const [totalRecords, setTotalRecords] = useState(0);
 	const [loading, setLoading] = useState(false);
-	const [selectedArtworks, setSelectedArtworks] = useState<Artwork[]>([]);
+	const [selectedItems, setSelectedItems] = useState<number[]>([]);
 	const [page, setPage] = useState(1);
 	const [rows, setRows] = useState(10);
-	const op = useRef(null);
+	const op = useRef<OverlayPanel | null>(null);
 
 	useEffect(() => {
 		fetchData(page, rows);
@@ -45,50 +36,57 @@ const DynamicTable: React.FC = () => {
 		}
 	};
 
-	console.log(selectedArtworks);
-
-	const onPageChange = (e: DataTablePageParams) => {
-		setPage(e.page + 1);
-		setRows(e.rows);
+	const isItemSelected = (index: number) => {
+		return selectedItems.includes(index);
 	};
 
-	const isRowSelected = (rowData: Artwork) => {
-		return selectedArtworks.some((artwork) => artwork.id === rowData.id);
-	};
-
-	const onRowSelect = (rowData: Artwork) => {
-		setSelectedArtworks((prevSelected) => {
-			if (isRowSelected(rowData)) {
-				return prevSelected.filter((artwork) => artwork.id !== rowData.id);
+	const toggleSelection = (index: number) => {
+		const itemNumber = index;
+		setSelectedItems((prev) => {
+			if (prev.includes(itemNumber)) {
+				return prev.filter((num) => num !== itemNumber);
 			} else {
-				return [...prevSelected, rowData];
+				return [...prev, itemNumber];
 			}
 		});
 	};
 
-	const onSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.checked) {
-			setSelectedArtworks([...artworks]);
-		} else {
-			setSelectedArtworks([]);
-		}
+	const onPageChange = (e: DataTableStateEvent) => {
+		if (!e.page) return;
+
+		setPage(e.page + 1);
+		setRows(e.rows);
 	};
 
-	const handleCustomSelection = () => {
-		// Custom Input Selection
+	const handleCustomSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const numbers = e.target.value
+			.split(',')
+			.map((num) => parseInt(num.trim(), 10))
+			.filter((num) => !isNaN(num));
+		setSelectedItems(numbers);
 	};
 
 	const renderOverlayButton = () => {
+		const toggleOverlay = (e: React.MouseEvent) => {
+			if (op.current) {
+				op.current.toggle(e);
+			}
+		};
 		return (
 			<>
 				<Button
 					type="button"
 					icon="pi pi-angle-down"
 					className="p-button-rounded p-button-text"
-					onClick={(e) => op.current.toggle(e)}
+					onClick={toggleOverlay}
 				/>
 				<OverlayPanel ref={op}>
-					<InputText type="text" placeholder="Normal" onChange={handleCustomSelection} />
+					<InputText
+						type="text"
+						placeholder="Enter numbers (e.g., 11, 12, 14)"
+						defaultValue={selectedItems.join(', ')}
+						onChange={handleCustomSelection}
+					/>
 				</OverlayPanel>
 			</>
 		);
@@ -96,7 +94,6 @@ const DynamicTable: React.FC = () => {
 
 	return (
 		<div className="card">
-			<h2>Art Institute of Chicago - Artworks</h2>
 			<DataTable
 				value={artworks}
 				lazy
@@ -107,12 +104,16 @@ const DynamicTable: React.FC = () => {
 				loading={loading}
 				onPage={onPageChange}
 				dataKey="id"
-				selection={selectedArtworks}
-				onSelectionChange={(e) => setSelectedArtworks(e.value)}
-				selectionMode="checkbox"
-				showSelectAll
 			>
-				<Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
+				<Column
+					headerStyle={{ width: '3em' }}
+					body={(_rowData, { rowIndex }) => (
+						<Checkbox
+							checked={isItemSelected(rowIndex)}
+							onChange={() => toggleSelection(rowIndex)}
+						/>
+					)}
+				/>
 				<Column header={renderOverlayButton} style={{ width: '4em' }} />
 				<Column field="title" header="Title" />
 				<Column field="place_of_origin" header="Place of Origin" />
@@ -121,21 +122,6 @@ const DynamicTable: React.FC = () => {
 				<Column field="date_start" header="Date Start" />
 				<Column field="date_end" header="Date End" />
 			</DataTable>
-
-			<div className="selected-artworks">
-				<h3>Selected Artworks</h3>
-				<ul>
-					{selectedArtworks.map((artwork) => (
-						<li key={artwork.id}>{artwork.title}</li>
-					))}
-				</ul>
-				<Button
-					label="Clear Selection"
-					icon="pi pi-times"
-					onClick={() => setSelectedArtworks([])}
-					className="p-button-danger"
-				/>
-			</div>
 		</div>
 	);
 };
