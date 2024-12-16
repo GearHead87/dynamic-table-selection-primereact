@@ -1,6 +1,5 @@
-// src/types.ts
 export interface Artwork {
-	id: string;
+	id: number;
 	title: string;
 	place_of_origin: string;
 	artist_display: string;
