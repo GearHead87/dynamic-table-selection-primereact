@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataTable, DataTablePageParams } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import axios from 'axios';
+import { OverlayPanel } from 'primereact/overlaypanel';
+import { InputText } from 'primereact/inputtext';
 
 interface Artwork {
 	id: number;
@@ -24,6 +26,7 @@ const DynamicTable: React.FC = () => {
 	const [selectedArtworks, setSelectedArtworks] = useState<Artwork[]>([]);
 	const [page, setPage] = useState(1);
 	const [rows, setRows] = useState(10);
+	const op = useRef(null);
 
 	useEffect(() => {
 		fetchData(page, rows);
@@ -71,6 +74,26 @@ const DynamicTable: React.FC = () => {
 		}
 	};
 
+	const handleCustomSelection = () => {
+		// Custom Input Selection
+	};
+
+	const renderOverlayButton = () => {
+		return (
+			<>
+				<Button
+					type="button"
+					icon="pi pi-angle-down"
+					className="p-button-rounded p-button-text"
+					onClick={(e) => op.current.toggle(e)}
+				/>
+				<OverlayPanel ref={op}>
+					<InputText type="text" placeholder="Normal" onChange={handleCustomSelection} />
+				</OverlayPanel>
+			</>
+		);
+	};
+
 	return (
 		<div className="card">
 			<h2>Art Institute of Chicago - Artworks</h2>
@@ -90,6 +113,7 @@ const DynamicTable: React.FC = () => {
 				showSelectAll
 			>
 				<Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
+				<Column header={renderOverlayButton} style={{ width: '4em' }} />
 				<Column field="title" header="Title" />
 				<Column field="place_of_origin" header="Place of Origin" />
 				<Column field="artist_display" header="Artist" />
